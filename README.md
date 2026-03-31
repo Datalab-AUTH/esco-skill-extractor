@@ -146,20 +146,27 @@ pip install "datalab-esco-skill-extractor[gemini]"
 
 ## Example scripts (`examples/`)
 
-Run from the repository root after `pip install -e .` (and `pip install -e ".[gemini]"` for the Gemini example):
+Run from the repository root after `pip install -e .`. Edit the `*_API_KEY`, host, and model constants at the top of each script before running.
 
 | Script | Purpose |
 |--------|---------|
 | `01_ollama_local.py` | Ollama on localhost (optional `OLLAMA_HOST` for another host/port). |
 | `02_openai_api.py` | Official OpenAI API with your key. |
-| `03_gemini.py` | Google Gemini for LLM calls. |
+| `03_gemini.py` | Google Gemini for LLM calls (needs `pip install -e ".[gemini]"`). |
 | `04_openwebui_openai_compatible.py` | Open WebUI OpenAI-compatible URL + API key (Ollama behind Open WebUI). |
 | `05_ollama_remote_host.py` | Ollama on a remote host/port via **direct** Ollama API (`ollama_host`); no Open WebUI. |
 | `06_openwebui_all_constructor_args.py` | Open WebUI + **every** matcher/extractor constructor keyword set explicitly (reference). |
 
 ```bash
 python examples/01_ollama_local.py
+python examples/02_openai_api.py
+python examples/03_gemini.py
+python examples/04_openwebui_openai_compatible.py
+python examples/05_ollama_remote_host.py
+python examples/06_openwebui_all_constructor_args.py
 ```
+
+Scripts `02`, `03`, `04`, and `06` exit early if you leave placeholder API keys or URLs in the file. `05` requires a reachable `OLLAMA_HOST` (set in the script or via the environment).
 
 ---
 
@@ -271,16 +278,6 @@ python -m ruff check src tests
 python -m pytest
 python -m build   # artefacts in dist/
 ```
-
----
-
-## Publishing to PyPI
-
-1. Bump `version` in `pyproject.toml` and update `CHANGELOG.md`.
-2. Create a GitHub **Release** (tag). `.github/workflows/publish.yml` uploads via [trusted publishing](https://docs.pypi.org/trusted-publishers/) once the project is registered on PyPI.
-3. Alternatively: `python -m build` and `twine upload dist/*`.
-
----
 
 ## Requirements
 

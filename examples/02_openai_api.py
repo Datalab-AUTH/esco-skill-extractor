@@ -28,8 +28,6 @@ JOB_DESCRIPTION: str = "Build APIs in Python; PostgreSQL; code review; agile tea
 JOB_QUALIFICATIONS: str = "3+ years Python; experience with REST and SQL."
 
 # ----- Optional -------------------------------------------------------------
-# Set only if you use a non-default OpenAI-compatible endpoint (omit for api.openai.com).
-# OPENAI_BASE_URL: str = "https://..."
 VERBOSE_LOGGING: bool = True
 
 

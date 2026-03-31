@@ -38,34 +38,6 @@ JOB_QUALIFICATIONS: str = "Experience in hotels; attention to detail."
 
 # ----- Optional -------------------------------------------------------------
 VERBOSE_LOGGING: bool = True
-# Full matcher output (all fields, including ESCO description text and URIs)
-OCCUPATION_MATCHES_JSON: str = "occupation_matches.json"
-
-
-def _print_occupation_details(matches: list[dict]) -> None:
-    """Print each candidate with URI, ISCO, score, and ESCO occupation description."""
-    print("\n" + "=" * 80)
-    print("OCCUPATION DETAILS (name, URI, ISCO, similarity, description)")
-    print("=" * 80)
-    if not matches:
-        print("(no matches)")
-        return
-    for i, m in enumerate(matches, 1):
-        name = m.get("occupation_name", "")
-        uri = m.get("esco_uri", "")
-        isco = m.get("isco_code", "")
-        score = m.get("similarity_score", "")
-        desc = (m.get("description") or "").strip()
-        if len(desc) > 400:
-            desc = desc[:400] + "…"
-        print(f"\n--- #{i} {name} ---")
-        print(f"  ESCO URI:         {uri}")
-        print(f"  ISCO group:       {isco if isco else '(none)'}")
-        print(f"  Similarity score: {score}")
-        if m.get("llm_validated"):
-            print(f"  LLM note:         {m.get('llm_reason', '')}")
-        print(f"  ESCO description:\n    {desc if desc else '(empty)'}")
-    print("\n" + "=" * 80)
 
 
 def main() -> None:
@@ -88,7 +60,6 @@ def main() -> None:
     )
     matcher.print_results(matches, JOB_TITLE)
     top = matches[0]["occupation_name"] if matches else JOB_TITLE
-    print("Top occupation:", top)
 
     extractor = ESCOSkillExtractor(
         llm_provider="openai",
@@ -107,11 +78,11 @@ def main() -> None:
         )
     )
     extractor.print_results(skills, JOB_TITLE)
-    print("JSON sample:", json.dumps([s.to_dict() for s in skills[:10]], indent=2))
+    print("JSON sample:", json.dumps([s.to_dict() for s in skills[:5]], indent=2))
 
 
 if __name__ == "__main__":
-    if OPENWEBUI_API_KEY.startswith("YOUR_") or "YOUR_OPEN_WEBUI" in OPENWEBUI_BASE_URL:
+    if OPENWEBUI_API_KEY.startswith("sk-YOUR_") or "YOUR_HOST" in OPENWEBUI_BASE_URL:
         sys.exit(
             "Edit OPENWEBUI_API_KEY and OPENWEBUI_BASE_URL in "
             "examples/04_openwebui_openai_compatible.py"
