@@ -1,0 +1,37 @@
+[
+  {
+    "esco_uri": "http://data.europa.eu/esco/occupation/731ecac4-06e8-4ec2-a559-101fecbd9183",
+    "occupation_name": "room attendant",
+    "similarity_score": 0.8779,
+    "description": "Room attendants clean, tidy and restock guest rooms as well as other public areas as directed.",
+    "isco_code": ""
+  },
+  {
+    "esco_uri": "http://data.europa.eu/esco/occupation/2d5a50c6-0bf4-45c3-805c-44d1bf1e3d12",
+    "occupation_name": "spa attendant",
+    "similarity_score": 0.7988,
+    "description": "Spa attendants interact with guests at the reception desk to provide indications and explain the available services in the spa center. They are also in charge of cleaning the spa rooms after use, maintaining storage area cleanliness and restocking clean towels. Spa attendants monitor the security of the facility and are responsible for selling the products and services available such as treatment packages.",
+    "isco_code": ""
+  },
+  {
+    "esco_uri": "http://data.europa.eu/esco/occupation/e65a9b0e-7347-4f6e-945e-aaeee976ef6e",
+    "occupation_name": "hotel butler",
+    "similarity_score": 0.7863,
+    "description": "Hotel butlers provide personalised services to guests in high level hospitality establishment. They manage the housekeeping staff to ensure clean interiors and excellent customer service. Hotel butlers are responsible for the general welfare and satisfaction of the guests.",
+    "isco_code": ""
+  },
+  {
+    "esco_uri": "http://data.europa.eu/esco/occupation/3cc51201-cd20-47f8-92ad-4d5861f963cf",
+    "occupation_name": "hotel porter",
+    "similarity_score": 0.7729,
+    "description": "Hotel porters welcome guests to accommodation facilities, help them carry their luggage and provide services such as occasional cleaning.",
+    "isco_code": ""
+  },
+  {
+    "esco_uri": "http://data.europa.eu/esco/occupation/15ab8475-549d-48a7-9d4a-5bb310015312",
+    "occupation_name": "linen room attendant",
+    "similarity_score": 0.7687,
+    "description": "Linen room attendants retrieve linen or uniforms for cleaning. They maintain service availability of the linen and keep inventory records.",
+    "isco_code": ""
+  }
+]

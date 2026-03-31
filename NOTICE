@@ -1,0 +1,13 @@
+ESCO dataset attribution
+-------------------------
+
+This package may ship or reference CSV extracts from ESCO (European Skills,
+Competences, Qualifications and Occupations), maintained by the European
+Commission. ESCO content is subject to the legal notice and licensing terms
+published at:
+
+  https://esco.ec.europa.eu/en/about-esco/legal-notice
+
+When redistributing ESCO-derived data, comply with those terms and retain
+appropriate attribution. This project’s MIT license applies to the Python
+code only, not to third-party taxonomy data.
