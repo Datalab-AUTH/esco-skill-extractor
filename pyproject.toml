@@ -3,7 +3,7 @@ requires = ["hatchling>=1.24"]
 build-backend = "hatchling.build"
 
 [project]
-name = "esco-skill-extractor"
+name = "datalab-esco-skill-extractor"
 version = "0.1.0"
 description = "Map job postings to ESCO occupations and extract ESCO skills using embeddings and LLMs."
 readme = "README.md"

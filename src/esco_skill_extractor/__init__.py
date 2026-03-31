@@ -6,7 +6,7 @@ from importlib.metadata import PackageNotFoundError, version
 from typing import TYPE_CHECKING, Any
 
 try:
-    __version__ = version("esco-skill-extractor")
+    __version__ = version("datalab-esco-skill-extractor")
 except PackageNotFoundError:
     __version__ = "0.1.0"
 

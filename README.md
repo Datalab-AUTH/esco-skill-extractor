@@ -1,8 +1,8 @@
-# esco-skill-extractor
+# datalab-esco-skill-extractor
 
 [![CI](https://github.com/Datalab-AUTH/esco-skill-extractor/actions/workflows/ci.yml/badge.svg)](https://github.com/Datalab-AUTH/esco-skill-extractor/actions/workflows/ci.yml)
 
-**esco-skill-extractor** is a Python library that connects free-text job postings to [ESCO](https://esco.ec.europa.eu/en) (European skills and occupations) in two steps:
+**datalab-esco-skill-extractor** is a Python library that connects free-text job postings to [ESCO](https://esco.ec.europa.eu/en) (European skills and occupations) in two steps:
 
 1. **Occupation matching** — embed the job text and rank ESCO occupations by semantic similarity, with optional LLM-based cleaning of noisy listings and optional LLM re-ranking of the top candidates.
 2. **Skill extraction** — call an LLM to list skills implied by the posting, then map each phrase to ESCO skill concepts using embeddings, prioritising skills that are already linked to the chosen occupation in ESCO.
@@ -30,7 +30,7 @@ pip install "git+https://github.com/Datalab-AUTH/esco-skill-extractor.git"
 After the project is published on PyPI, you can use:
 
 ```bash
-pip install esco-skill-extractor
+pip install datalab-esco-skill-extractor
 ```
 
 **PyTorch** is a dependency (CPU wheels from PyPI by default). For GPU builds, follow [PyTorch’s install guide](https://pytorch.org/get-started/locally/) for your platform.
@@ -139,7 +139,7 @@ Use `llm_provider="gemini"`, `google_api_key="…"` (from [Google AI Studio](htt
 pip install -e ".[gemini]"
 
 # from PyPI, once published
-pip install "esco-skill-extractor[gemini]"
+pip install "datalab-esco-skill-extractor[gemini]"
 ```
 
 ---

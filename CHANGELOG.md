@@ -29,6 +29,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `llm_provider="gemini"` with `google_api_key` (optional extra `pip install esco-skill-extractor[gemini]`).
+- `llm_provider="gemini"` with `google_api_key` (optional extra `pip install datalab-esco-skill-extractor[gemini]`).
 - `openai_base_url` for OpenAI-compatible APIs (e.g. Open WebUI); CLI `--openai-base-url`, `--google-api-key`.
 - Example scripts: `examples/01_ollama_local.py`, `02_openai_api.py`, `03_gemini.py`, `04_openwebui_openai_compatible.py`, `05_ollama_remote_host.py`, `06_openwebui_all_constructor_args.py`.
