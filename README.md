@@ -27,12 +27,6 @@ Or a one-line install from GitHub:
 pip install "git+https://github.com/Datalab-AUTH/esco-skill-extractor.git"
 ```
 
-After the project is published on PyPI, you can use:
-
-```bash
-pip install datalab-esco-skill-extractor
-```
-
 **PyTorch** is a dependency (CPU wheels from PyPI by default). For GPU builds, follow [PyTorch’s install guide](https://pytorch.org/get-started/locally/) for your platform.
 
 **Development** (editable install + linters/tests):
@@ -55,7 +49,7 @@ Under `esco_skill_extractor/data/` the wheel includes three CSV extracts used by
 | `esco_skills.csv` | Skill URI, labels, description |
 | `occupation_skills_mapping.csv` | Links occupations to essential/optional skills |
 
-To use **your own** ESCO dumps, pass explicit paths into the constructors (see below). ESCO content is subject to the [ESCO legal notice](https://esco.ec.europa.eu/en/about-esco/legal-notice); see also `NOTICE` in this repository.
+To use **your own** ESCO dumps, pass explicit paths into the constructors (see below). ESCO content is subject to the [ESCO notice]([https://esco.ec.europa.eu/en/about-esco/legal-notice](https://esco.ec.europa.eu/en/about-esco/legal-notice))
 
 ---
 
