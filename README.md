@@ -7,7 +7,7 @@
 1. **Occupation matching** — embed the job text and rank ESCO occupations by semantic similarity, with optional LLM-based cleaning of noisy listings and optional LLM re-ranking of the top candidates.
 2. **Skill extraction** — call an LLM to list skills implied by the posting, then map each phrase to ESCO skill concepts using embeddings, prioritising skills that are already linked to the chosen occupation in ESCO.
 
-Everything is configured **in code** (constructor arguments and method parameters). The library does **not** use `.env` files. For Ollama, pass **`ollama_host="http://your-server:11434"`** to point at a remote server; if you omit it, the library uses the **`OLLAMA_HOST`** environment variable when set, otherwise `http://127.0.0.1:11434` (via direct HTTP to Ollama’s API, not the `ollama` Python package, so imports stay fast on Windows).
+Everything is configured **in code** (constructor arguments and method parameters). For Ollama, pass **`ollama_host="http://your-server:11434"`** to point at a remote server; if you omit it, the library uses the **`OLLAMA_HOST`** environment variable when set, otherwise `http://127.0.0.1:11434` (via direct HTTP to Ollama’s API, not the `ollama` Python package, so imports stay fast on Windows).
 
 ---
 
