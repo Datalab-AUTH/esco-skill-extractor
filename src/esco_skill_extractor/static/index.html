@@ -1,0 +1,952 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ESCO Skill Extractor</title>
+<style>
+  :root {
+    --bg: #f6f8fa;
+    --panel: #ffffff;
+    --panel-2: #f1f3f5;
+    --border: #e1e4e8;
+    --border-strong: #c7cdd4;
+    --text: #1f2328;
+    --muted: #6e7681;
+    --accent: #0969da;
+    --accent-soft: #ddf4ff;
+    --good: #1a7f37;
+    --good-soft: #dafbe1;
+    --warn: #9a6700;
+    --warn-soft: #fff8c5;
+    --bad: #cf222e;
+    --bad-soft: #ffebe9;
+    --predef: #8250df;
+    --predef-soft: #fbefff;
+
+    --term-bg: #0d1117;
+    --term-text: #d4d4d4;
+    --term-info: #79c0ff;
+    --term-debug: #8b949e;
+    --term-warn: #d29922;
+    --term-error: #f85149;
+    --term-time: #6e7681;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    padding: 16px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .sub { color: var(--muted); font-size: 12px; }
+  main {
+    display: grid;
+    grid-template-columns: 300px 1fr 280px;
+    gap: 16px;
+    padding: 16px 28px;
+    max-width: 1500px;
+    margin: 0 auto;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .panel h2 {
+    margin: 0 0 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+  }
+  label {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  label > span { display: block; margin-bottom: 4px; }
+  input[type=text], input[type=number], input[type=password], textarea, select {
+    width: 100%;
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font: inherit;
+    outline: none;
+  }
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  textarea { resize: vertical; min-height: 70px; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  .check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    color: var(--text);
+    font-size: 13px;
+  }
+  .check input { width: auto; }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    background: none;
+    border: none;
+    color: var(--muted);
+    padding: 8px 14px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    font: inherit;
+  }
+  .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+  button.primary {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 9px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 500;
+  }
+  button.primary:hover:not(:disabled) { filter: brightness(1.05); }
+  button.primary:disabled {
+    background: var(--border-strong);
+    cursor: not-allowed;
+  }
+  .ghost-btn {
+    background: var(--panel);
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+  }
+  .ghost-btn:hover { background: var(--panel-2); }
+
+  .status {
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 12px;
+    min-height: 20px;
+  }
+  .status.error { color: var(--bad); }
+  .status.success { color: var(--good); }
+  .status.loading { color: var(--accent); }
+
+  .logs {
+    margin-top: 12px;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11.5px;
+    line-height: 1.5;
+    background: var(--term-bg);
+    color: var(--term-text);
+    border-radius: 6px;
+    padding: 10px 12px;
+    max-height: 260px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    display: none;
+  }
+  .logs.show { display: block; }
+  .logs .line { display: block; padding: 1px 0; }
+  .logs .ts { color: var(--term-time); margin-right: 8px; }
+  .logs .lv { margin-right: 6px; font-weight: 600; }
+  .level-INFO    .lv { color: var(--term-info); }
+  .level-DEBUG   .lv { color: var(--term-debug); }
+  .level-WARNING .lv { color: var(--term-warn); }
+  .level-ERROR   .lv,
+  .level-CRITICAL .lv { color: var(--term-error); }
+
+  .result { margin-top: 14px; }
+  .match {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  .match-title {
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .badge {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .badge.essential { background: var(--good-soft); color: var(--good); border-color: transparent; }
+  .badge.optional  { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+  .badge.predefined { background: var(--predef-soft); color: var(--predef); border-color: transparent; }
+  .badge.discovered { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+  .badge.queued   { background: var(--panel-2); color: var(--muted); }
+  .badge.running  { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+  .badge.done     { background: var(--good-soft); color: var(--good); border-color: transparent; }
+  .badge.error    { background: var(--bad-soft); color: var(--bad); border-color: transparent; }
+
+  .meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .uri  { font-family: ui-monospace, monospace; font-size: 11px; word-break: break-all; }
+  .empty {
+    color: var(--muted);
+    font-style: italic;
+    padding: 20px;
+    text-align: center;
+    font-size: 13px;
+  }
+
+  .skill-section { margin-top: 14px; }
+  .skill-section h3 { margin: 0 0 8px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .spinner {
+    display: inline-block;
+    width: 11px; height: 11px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* History */
+  .history-list { display: flex; flex-direction: column; gap: 6px; }
+  .history-item {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    cursor: pointer;
+    transition: background 0.1s, border-color 0.1s;
+  }
+  .history-item:hover {
+    background: var(--panel-2);
+    border-color: var(--border-strong);
+  }
+  .history-item.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-soft);
+  }
+  .hi-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .hi-title .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+  }
+  .hi-meta { color: var(--muted); font-size: 11px; margin-top: 2px; }
+
+  .hist-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .hist-header h2 { margin: 0; }
+
+  .save-indicator {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: -4px;
+    margin-bottom: 12px;
+    min-height: 14px;
+  }
+  .save-indicator.saved { color: var(--good); }
+  .save-indicator.saving { color: var(--accent); }
+  .save-indicator.failed { color: var(--bad); }
+
+  .from-occ-row {
+    display: flex;
+    gap: 6px;
+    align-items: flex-end;
+    margin-bottom: 10px;
+  }
+  .from-occ-row label { flex: 1; margin-bottom: 0; }
+
+  .use-skill-btn {
+    background: var(--panel);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    margin-top: 6px;
+  }
+  .use-skill-btn:hover { background: var(--accent-soft); }
+
+  @media (max-width: 1200px) {
+    main { grid-template-columns: 280px 1fr; }
+    .history-panel { grid-column: 1 / -1; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>ESCO Skill Extractor</h1>
+    <div class="sub">Web Application for ESCO occupation matching and skill extraction</div>
+  </div>
+</header>
+
+<main>
+  <aside class="panel">
+    <h2>Configuration</h2>
+    <div class="save-indicator" id="settings_save"></div>
+
+    <label><span>Embedding model</span>
+      <select id="embedding_model">
+        <option value="nomic">nomic (default)</option>
+        <option value="bge-base">bge-base</option>
+        <option value="bge-large">bge-large</option>
+        <option value="bge-small">bge-small</option>
+        <option value="minilm">minilm</option>
+        <option value="mpnet">mpnet</option>
+        <option value="openai">openai</option>
+      </select>
+    </label>
+
+    <label><span>LLM provider</span>
+      <select id="llm_provider">
+        <option value="ollama">ollama</option>
+        <option value="openai">openai</option>
+        <option value="gemini">gemini</option>
+      </select>
+    </label>
+
+    <label><span>LLM model</span>
+      <input id="llm_model" type="text" value="deepseek-r1:7b" />
+    </label>
+
+    <label><span>Ollama host</span>
+      <input id="ollama_host" type="text" placeholder="http://127.0.0.1:11434" />
+    </label>
+
+    <label><span>OpenAI API key</span>
+      <input id="openai_api_key" type="password" />
+    </label>
+
+    <label><span>OpenAI base URL</span>
+      <input id="openai_base_url" type="text" placeholder="optional" />
+    </label>
+
+    <label><span>Google API key</span>
+      <input id="google_api_key" type="password" />
+    </label>
+
+    <label><span>Embeddings cache dir</span>
+      <input id="embeddings_cache_dir" type="text" placeholder="./embeddings_cache" />
+    </label>
+
+    <label class="check">
+      <input id="force_recompute_embeddings" type="checkbox" />
+      <span>Force recompute embeddings</span>
+    </label>
+
+    <label class="check">
+      <input id="verbose" type="checkbox" />
+      <span>Verbose logging</span>
+    </label>
+  </aside>
+
+  <section>
+    <div class="tabs">
+      <button class="tab active" data-tab="occ">Occupation Match</button>
+      <button class="tab" data-tab="sk">Skill Extraction</button>
+    </div>
+
+    <div class="panel tab-content" id="tab-occ">
+      <label><span>Job title</span>
+        <input id="occ_title" type="text" placeholder="e.g. Senior Data Scientist" />
+      </label>
+      <label><span>Description</span>
+        <textarea id="occ_description" placeholder="Optional"></textarea>
+      </label>
+      <label><span>Qualifications</span>
+        <textarea id="occ_qualifications" placeholder="Optional"></textarea>
+      </label>
+      <div class="row">
+        <label><span>top_k</span>
+          <input id="occ_top_k" type="number" min="1" value="5" />
+        </label>
+        <label><span>min_similarity</span>
+          <input id="occ_min_similarity" type="number" min="0" max="1" step="0.05" value="0.5" />
+        </label>
+      </div>
+      <label class="check">
+        <input id="occ_clean_with_llm" type="checkbox" checked />
+        <span>Clean job description with LLM</span>
+      </label>
+      <label class="check">
+        <input id="occ_use_llm_validation" type="checkbox" />
+        <span>Use LLM validation</span>
+      </label>
+      <button class="primary" id="occ_run">Find matches</button>
+      <div class="status" id="occ_status"></div>
+      <div class="logs" id="occ_logs"></div>
+      <div class="result" id="occ_result"></div>
+    </div>
+
+    <div class="panel tab-content" id="tab-sk" hidden>
+      <div class="from-occ-row">
+        <label><span>Load from a finished occupation match</span>
+          <select id="sk_from_occ">
+            <option value="">— select an occupation job —</option>
+          </select>
+        </label>
+      </div>
+      <label><span>Job title</span>
+        <input id="sk_title" type="text" placeholder="e.g. Senior Data Scientist" />
+      </label>
+      <label><span>ESCO occupation name</span>
+        <input id="sk_occupation" type="text" placeholder="e.g. data scientist (preferredLabel)" />
+      </label>
+      <label><span>Description</span>
+        <textarea id="sk_description" placeholder="Optional"></textarea>
+      </label>
+      <label><span>Qualifications</span>
+        <textarea id="sk_qualifications" placeholder="Optional"></textarea>
+      </label>
+      <label><span>similarity_threshold</span>
+        <input id="sk_threshold" type="number" min="0" max="1" step="0.05" value="0.6" />
+      </label>
+      <button class="primary" id="sk_run">Extract skills</button>
+      <div class="status" id="sk_status"></div>
+      <div class="logs" id="sk_logs"></div>
+      <div class="result" id="sk_result"></div>
+    </div>
+  </section>
+
+  <aside class="panel history-panel">
+    <div class="hist-header">
+      <h2>History</h2>
+      <button class="ghost-btn" id="hist_refresh">Refresh</button>
+    </div>
+    <div class="history-list" id="history_list">
+      <div class="empty">No jobs yet.</div>
+    </div>
+  </aside>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const STORAGE_KEY = "esco_active_jobs";
+const POLL_INTERVAL_MS = 1000;
+const pollers = {}; // kind -> { handle, lastIndex }
+
+// -------- localStorage active-job tracking ----------
+function loadActive() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+  catch { return {}; }
+}
+function setActiveJob(kind, jobId) {
+  const s = loadActive();
+  if (jobId) s[kind] = jobId;
+  else delete s[kind];
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+}
+function getActiveJob(kind) {
+  return loadActive()[kind] || null;
+}
+
+// -------- helpers ----------
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+function setStatus(el, text, kind) {
+  el.className = "status" + (kind ? " " + kind : "");
+  el.innerHTML = kind === "loading"
+    ? `<span class="spinner"></span>${escapeHtml(text)}`
+    : escapeHtml(text);
+}
+
+// -------- tab switching ----------
+document.querySelectorAll(".tab").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    document.querySelectorAll(".tab-content").forEach((p) => p.hidden = true);
+    $("tab-" + btn.dataset.tab).hidden = false;
+  });
+});
+
+// -------- request payload ----------
+function configPayload() {
+  const v = (id) => $(id).value.trim() || null;
+  return {
+    embedding_model: $("embedding_model").value,
+    llm_provider: $("llm_provider").value,
+    llm_model: $("llm_model").value,
+    ollama_host: v("ollama_host"),
+    openai_api_key: v("openai_api_key"),
+    openai_base_url: v("openai_base_url"),
+    google_api_key: v("google_api_key"),
+    embeddings_cache_dir: v("embeddings_cache_dir"),
+    force_recompute_embeddings: $("force_recompute_embeddings").checked,
+    verbose: $("verbose").checked,
+  };
+}
+
+async function postJSON(url, body) {
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const text = await r.text();
+  let data;
+  try { data = JSON.parse(text); } catch { data = { detail: text }; }
+  if (!r.ok) throw new Error(data.detail || `HTTP ${r.status}`);
+  return data;
+}
+
+// -------- log rendering ----------
+function appendLogs(kind, logs) {
+  if (!logs || !logs.length) return;
+  const el = $(kind + "_logs");
+  el.classList.add("show");
+  const wasNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+  for (const log of logs) {
+    const div = document.createElement("div");
+    div.className = "line level-" + (log.level || "INFO");
+    const ts = new Date(log.ts * 1000).toLocaleTimeString();
+    div.innerHTML =
+      `<span class="ts">${escapeHtml(ts)}</span>` +
+      `<span class="lv">[${escapeHtml(log.level || "")}]</span>` +
+      `${escapeHtml(log.message)}`;
+    el.appendChild(div);
+  }
+  if (wasNearBottom) el.scrollTop = el.scrollHeight;
+}
+
+function clearLogs(kind) {
+  const el = $(kind + "_logs");
+  el.innerHTML = "";
+  el.classList.remove("show");
+}
+
+// -------- result rendering ----------
+// Track which occupation job's results are currently displayed so the
+// "Use for skills" button can pull title/description/qualifications from it.
+let currentOccJob = null;
+
+function renderMatches(matches) {
+  if (!matches || !matches.length) return `<div class="empty">No matches above threshold.</div>`;
+  return matches.map((m, i) => `
+    <div class="match">
+      <div class="match-title">
+        <span>${i + 1}. ${escapeHtml(m.occupation_name)}</span>
+        <span class="badge">score ${m.similarity_score}</span>
+      </div>
+      <div class="meta">ISCO: ${escapeHtml(m.isco_code || "—")}</div>
+      <div class="meta uri">${escapeHtml(m.esco_uri || "")}</div>
+      ${m.description ? `<div class="meta" style="margin-top:6px;">${escapeHtml(m.description)}</div>` : ""}
+      <button class="use-skill-btn" data-occ="${escapeHtml(m.occupation_name)}">→ Use for skill extraction</button>
+    </div>
+  `).join("");
+}
+
+function renderSkills(skills) {
+  if (!skills || !skills.length) return `<div class="empty">No skills mapped.</div>`;
+  const groups = { essential: [], optional: [] };
+  for (const s of skills) (groups[s.category] || groups.essential).push(s);
+  function block(title, items) {
+    if (!items.length) return "";
+    return `
+      <div class="skill-section">
+        <h3>${title} (${items.length})</h3>
+        ${items.map((s) => `
+          <div class="match">
+            <div class="match-title">
+              <span>${escapeHtml(s.preferred_label)}</span>
+              <span>
+                <span class="badge ${s.category}">${s.category}</span>
+                <span class="badge ${s.source}">${s.source}</span>
+                <span class="badge">${s.similarity_score.toFixed(3)}</span>
+              </span>
+            </div>
+            <div class="meta uri">${escapeHtml(s.esco_skill_uri)}</div>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  }
+  return block("Essential skills", groups.essential) + block("Optional skills", groups.optional);
+}
+
+function renderResult(kind, data) {
+  const el = $(kind + "_result");
+  if (!data || !data.result) { el.innerHTML = ""; return; }
+  if (kind === "occ") {
+    currentOccJob = data;
+    el.innerHTML = renderMatches(data.result.matches);
+    el.querySelectorAll(".use-skill-btn").forEach((btn) => {
+      btn.addEventListener("click", () =>
+        useOccupationForSkills(currentOccJob, btn.dataset.occ)
+      );
+    });
+  } else {
+    el.innerHTML = renderSkills(data.result.skills);
+  }
+}
+
+function useOccupationForSkills(occJob, occupationName) {
+  const inputs = (occJob && occJob.inputs) || {};
+  $("sk_title").value = inputs.title || (occJob && occJob.title) || "";
+  $("sk_occupation").value = occupationName || "";
+  $("sk_description").value = inputs.description || "";
+  $("sk_qualifications").value = inputs.qualifications || "";
+  document.querySelector('.tab[data-tab="sk"]').click();
+  $("sk_title").focus();
+}
+
+// -------- job state rendering ----------
+function renderJobState(kind, data, opts = {}) {
+  const statusEl = $(kind + "_status");
+  const btn = $(kind + "_run");
+  if (!data) {
+    setStatus(statusEl, "");
+    btn.disabled = false;
+    return;
+  }
+  if (data.status === "queued" || data.status === "running") {
+    setStatus(statusEl, `${data.status}…`, "loading");
+    btn.disabled = true;
+  } else if (data.status === "done") {
+    setStatus(statusEl, opts.silent ? "" : "Complete.", "success");
+    btn.disabled = false;
+    renderResult(kind, data);
+  } else if (data.status === "error") {
+    setStatus(statusEl, "Error: " + (data.error || "unknown"), "error");
+    btn.disabled = false;
+  }
+}
+
+// -------- polling ----------
+function stopPolling(kind) {
+  if (pollers[kind]) {
+    clearInterval(pollers[kind].handle);
+    delete pollers[kind];
+  }
+}
+
+async function pollOnce(kind, jobId) {
+  const since = (pollers[kind] && pollers[kind].lastIndex) || 0;
+  let r;
+  try {
+    r = await fetch(`/api/jobs/${jobId}?since=${since}`);
+  } catch (e) {
+    return; // network blip; try again next tick
+  }
+  if (r.status === 404) {
+    // Job no longer exists (server restart, evicted from history).
+    setActiveJob(kind, null);
+    stopPolling(kind);
+    setStatus($(kind + "_status"), "Previous job is no longer available.", "error");
+    return;
+  }
+  if (!r.ok) return;
+  const data = await r.json();
+
+  if (data.logs && data.logs.length) {
+    appendLogs(kind, data.logs);
+    pollers[kind].lastIndex = data.logs[data.logs.length - 1].i + 1;
+  }
+  renderJobState(kind, data);
+
+  if (data.status === "done" || data.status === "error") {
+    stopPolling(kind);
+    setActiveJob(kind, null);
+    refreshHistory();
+  }
+}
+
+function startPolling(kind, jobId) {
+  stopPolling(kind);
+  pollers[kind] = { handle: null, lastIndex: 0 };
+  pollers[kind].handle = setInterval(() => pollOnce(kind, jobId), POLL_INTERVAL_MS);
+  pollOnce(kind, jobId); // immediate
+}
+
+// -------- submit handlers ----------
+async function submit(kind, url, body) {
+  // Reset display for a new run
+  clearLogs(kind);
+  $(kind + "_result").innerHTML = "";
+  setStatus($(kind + "_status"), "Submitting…", "loading");
+  $(kind + "_run").disabled = true;
+  try {
+    const data = await postJSON(url, body);
+    setActiveJob(kind, data.job_id);
+    startPolling(kind, data.job_id);
+    refreshHistory();
+  } catch (err) {
+    $(kind + "_run").disabled = false;
+    setStatus($(kind + "_status"), "Error: " + err.message, "error");
+  }
+}
+
+$("occ_run").addEventListener("click", () => {
+  const title = $("occ_title").value.trim();
+  if (!title) {
+    setStatus($("occ_status"), "Job title is required.", "error");
+    return;
+  }
+  submit("occ", "/api/occupation/match", {
+    ...configPayload(),
+    title,
+    description: $("occ_description").value.trim() || null,
+    qualifications: $("occ_qualifications").value.trim() || null,
+    use_llm_validation: $("occ_use_llm_validation").checked,
+    clean_with_llm: $("occ_clean_with_llm").checked,
+    top_k: parseInt($("occ_top_k").value, 10) || 5,
+    min_similarity: parseFloat($("occ_min_similarity").value) || 0,
+  });
+});
+
+$("sk_run").addEventListener("click", () => {
+  const title = $("sk_title").value.trim();
+  const occupation = $("sk_occupation").value.trim();
+  if (!title || !occupation) {
+    setStatus($("sk_status"), "Job title and occupation name are required.", "error");
+    return;
+  }
+  submit("sk", "/api/skills/extract", {
+    ...configPayload(),
+    title,
+    occupation,
+    description: $("sk_description").value.trim() || null,
+    qualifications: $("sk_qualifications").value.trim() || null,
+    similarity_threshold: parseFloat($("sk_threshold").value) || 0.6,
+  });
+});
+
+// -------- history ----------
+async function refreshHistory() {
+  const el = $("history_list");
+  try {
+    const r = await fetch("/api/jobs");
+    if (!r.ok) return;
+    const data = await r.json();
+    const list = data.jobs || [];
+    populateOccDropdown(list);
+    if (!list.length) {
+      el.innerHTML = `<div class="empty">No jobs yet.</div>`;
+      return;
+    }
+    const active = loadActive();
+    el.innerHTML = list.map((j) => {
+      const t = j.finished_at || j.started_at || j.created_at;
+      const isActive = active.occ === j.id || active.sk === j.id;
+      return `
+        <div class="history-item ${isActive ? "active" : ""}" data-id="${escapeHtml(j.id)}" data-kind="${escapeHtml(j.kind)}">
+          <div class="hi-title">
+            <span class="name">${escapeHtml(j.title || "(untitled)")}</span>
+            <span class="badge ${j.status}">${j.status}</span>
+          </div>
+          <div class="hi-meta">${escapeHtml(j.kind)} · ${new Date(t * 1000).toLocaleString()}</div>
+        </div>
+      `;
+    }).join("");
+    el.querySelectorAll(".history-item").forEach((item) => {
+      item.addEventListener("click", () => loadHistoryItem(item.dataset.id, item.dataset.kind));
+    });
+  } catch (err) {
+    console.error("History refresh failed:", err);
+  }
+}
+
+function populateOccDropdown(allJobs) {
+  const sel = $("sk_from_occ");
+  const finishedOcc = (allJobs || []).filter(
+    (j) => j.kind === "occupation" && j.status === "done"
+  );
+  const prev = sel.value;
+  sel.innerHTML = `<option value="">— select an occupation job —</option>` +
+    finishedOcc.map((j) => {
+      const t = new Date((j.finished_at || j.created_at) * 1000).toLocaleString();
+      return `<option value="${escapeHtml(j.id)}">${escapeHtml(j.title)} · ${escapeHtml(t)}</option>`;
+    }).join("");
+  if (finishedOcc.find((j) => j.id === prev)) sel.value = prev;
+}
+
+$("sk_from_occ").addEventListener("change", async (ev) => {
+  const id = ev.target.value;
+  if (!id) return;
+  try {
+    const r = await fetch(`/api/jobs/${id}`);
+    if (!r.ok) return;
+    const data = await r.json();
+    const matches = (data.result && data.result.matches) || [];
+    const top = matches[0];
+    if (!top) {
+      setStatus($("sk_status"), "That occupation job has no matches.", "error");
+      return;
+    }
+    useOccupationForSkills(data, top.occupation_name);
+  } catch (err) {
+    console.error("Loading occupation job failed:", err);
+  }
+});
+
+async function loadHistoryItem(jobId, jobKind) {
+  const r = await fetch(`/api/jobs/${jobId}`);
+  if (!r.ok) return;
+  const data = await r.json();
+  const kind = data.kind === "occupation" ? "occ" : "sk";
+  // Switch to the matching tab
+  document.querySelector(`.tab[data-tab="${kind}"]`).click();
+  // If this same job is currently being polled live, don't disturb it
+  if ((pollers[kind] && pollers[kind].handle) && getActiveJob(kind) === jobId) return;
+  // Otherwise replay stored state
+  clearLogs(kind);
+  appendLogs(kind, data.logs || []);
+  renderJobState(kind, data, { silent: false });
+  if (data.status === "queued" || data.status === "running") {
+    // It's still running but not tracked by this tab; pick it up
+    setActiveJob(kind, jobId);
+    startPolling(kind, jobId);
+  }
+}
+
+$("hist_refresh").addEventListener("click", refreshHistory);
+
+// -------- settings persistence (server-side, web_settings/settings.json) ----------
+const SETTINGS_FIELDS = [
+  ["embedding_model", "value"],
+  ["llm_provider", "value"],
+  ["llm_model", "value"],
+  ["ollama_host", "value"],
+  ["openai_api_key", "value"],
+  ["openai_base_url", "value"],
+  ["google_api_key", "value"],
+  ["embeddings_cache_dir", "value"],
+  ["force_recompute_embeddings", "checked"],
+  ["verbose", "checked"],
+];
+
+let settingsSaveTimer = null;
+let settingsLoaded = false;
+
+function setSavedHint(state, msg) {
+  const el = $("settings_save");
+  el.className = "save-indicator " + state;
+  el.textContent = msg || "";
+}
+
+function gatherSettings() {
+  const out = {};
+  for (const [id, prop] of SETTINGS_FIELDS) {
+    out[id] = $(id)[prop];
+  }
+  return out;
+}
+
+function applySettings(data) {
+  if (!data) return;
+  for (const [id, prop] of SETTINGS_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(data, id)) {
+      $(id)[prop] = data[id] ?? (prop === "checked" ? false : "");
+    }
+  }
+}
+
+async function loadSettings() {
+  try {
+    const r = await fetch("/api/settings");
+    if (!r.ok) return;
+    applySettings(await r.json());
+  } catch (err) {
+    console.error("loadSettings failed:", err);
+  } finally {
+    settingsLoaded = true;
+  }
+}
+
+async function saveSettingsNow() {
+  if (!settingsLoaded) return;
+  setSavedHint("saving", "Saving…");
+  try {
+    const r = await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(gatherSettings()),
+    });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    setSavedHint("saved", "Saved · " + new Date().toLocaleTimeString());
+  } catch (err) {
+    setSavedHint("failed", "Save failed: " + err.message);
+  }
+}
+
+function scheduleSettingsSave() {
+  if (!settingsLoaded) return;
+  clearTimeout(settingsSaveTimer);
+  setSavedHint("saving", "Saving…");
+  settingsSaveTimer = setTimeout(saveSettingsNow, 400);
+}
+
+function bindSettingsAutosave() {
+  for (const [id] of SETTINGS_FIELDS) {
+    const el = $(id);
+    const ev = (el.tagName === "SELECT" || el.type === "checkbox") ? "change" : "input";
+    el.addEventListener(ev, scheduleSettingsSave);
+  }
+}
+
+// -------- on page load: load settings, resume any active jobs ----------
+window.addEventListener("DOMContentLoaded", async () => {
+  await loadSettings();
+  bindSettingsAutosave();
+  await refreshHistory();
+  for (const kind of ["occ", "sk"]) {
+    const jid = getActiveJob(kind);
+    if (jid) startPolling(kind, jid);
+  }
+});
+</script>
+</body>
+</html>

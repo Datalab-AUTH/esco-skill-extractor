@@ -92,6 +92,26 @@ def _cmd_occupation(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_web(args: argparse.Namespace) -> int:
+    try:
+        from .web import run as run_web
+    except ImportError as err:
+        print(
+            "Web dependencies are missing. Install with:\n"
+            '  pip install "datalab-esco-skill-extractor[web]"\n'
+            f"Underlying error: {err}",
+            file=sys.stderr,
+        )
+        return 1
+    run_web(
+        host=args.host,
+        port=args.port,
+        reload=args.reload,
+        settings_dir=args.settings_dir,
+    )
+    return 0
+
+
 def _cmd_skills(args: argparse.Namespace) -> int:
     from .models import JobPosting
     from .skill_extraction import ESCOSkillExtractor
@@ -195,6 +215,18 @@ def main() -> int:
     p_sk.add_argument("--save-csv", action="store_true")
     p_sk.add_argument("--output-dir", default="output")
     p_sk.set_defaults(func=_cmd_skills)
+
+    p_web = sub.add_parser("web", help="Run the local FastAPI server with browser UI")
+    p_web.add_argument("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)")
+    p_web.add_argument("--port", type=int, default=8000, help="Bind port (default: 8000)")
+    p_web.add_argument("--reload", action="store_true", help="Enable uvicorn auto-reload (development)")
+    p_web.add_argument(
+        "--settings-dir",
+        default="web_settings",
+        help="Directory for persisted UI settings + job history (default: ./web_settings)",
+    )
+    p_web.add_argument("--verbose", action="store_true", help="DEBUG logging")
+    p_web.set_defaults(func=_cmd_web)
 
     args = parser.parse_args()
     logging.basicConfig(
