@@ -160,7 +160,7 @@ class Job:
         self._log_counter = 0
 
     @classmethod
-    def from_snapshot(cls, data: dict) -> "Job":
+    def from_snapshot(cls, data: dict) -> Job:
         """Reconstruct a Job from a previously-persisted snapshot."""
         j = cls(data.get("kind", "occupation"), data.get("title", ""), data.get("inputs") or {})
         j.id = data.get("id", j.id)

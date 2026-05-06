@@ -837,6 +837,20 @@ async function loadHistoryItem(jobId, jobKind) {
   if (!r.ok) return;
   const data = await r.json();
   const kind = data.kind === "occupation" ? "occ" : "sk";
+  
+  // Populate the form fields with the job's inputs
+  const inputs = data.inputs || {};
+  if (kind === "occ") {
+    $("occ_title").value = inputs.title || data.title || "";
+    $("occ_description").value = inputs.description || "";
+    $("occ_qualifications").value = inputs.qualifications || "";
+  } else if (kind === "sk") {
+    $("sk_title").value = inputs.title || data.title || "";
+    $("sk_occupation").value = inputs.occupation || "";
+    $("sk_description").value = inputs.description || "";
+    $("sk_qualifications").value = inputs.qualifications || "";
+  }
+
   // Switch to the matching tab
   document.querySelector(`.tab[data-tab="${kind}"]`).click();
   // If this same job is currently being polled live, don't disturb it

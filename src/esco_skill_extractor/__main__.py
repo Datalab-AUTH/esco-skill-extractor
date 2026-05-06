@@ -219,7 +219,9 @@ def main() -> int:
     p_web = sub.add_parser("web", help="Run the local FastAPI server with browser UI")
     p_web.add_argument("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)")
     p_web.add_argument("--port", type=int, default=8000, help="Bind port (default: 8000)")
-    p_web.add_argument("--reload", action="store_true", help="Enable uvicorn auto-reload (development)")
+    p_web.add_argument(
+        "--reload", action="store_true", help="Enable uvicorn auto-reload (development)"
+    )
     p_web.add_argument(
         "--settings-dir",
         default="web_settings",

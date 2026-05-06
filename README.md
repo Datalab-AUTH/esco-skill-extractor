@@ -25,6 +25,9 @@ Or a one-line install from GitHub:
 
 ```bash
 pip install "git+https://github.com/Datalab-AUTH/esco-skill-extractor.git"
+
+# To include the web UI dependencies:
+pip install "datalab-esco-skill-extractor[web] @ git+https://github.com/Datalab-AUTH/esco-skill-extractor.git"
 ```
 
 **PyTorch** is a dependency (CPU wheels from PyPI by default). For GPU builds, follow [PyTorch’s install guide](https://pytorch.org/get-started/locally/) for your platform.
@@ -34,7 +37,7 @@ pip install "git+https://github.com/Datalab-AUTH/esco-skill-extractor.git"
 ```bash
 git clone https://github.com/Datalab-AUTH/esco-skill-extractor.git
 cd esco-skill-extractor
-pip install -e ".[dev]"
+pip install -e ".[dev,web]"
 ```
 
 ---
@@ -245,7 +248,18 @@ Common options (both subcommands):
 - `--skills-csv`, `--occupations-csv`, `--mapping-csv`, `--similarity-threshold`
 - `--save-csv`, `--output-dir`
 
-Equivalent: `python -m esco_skill_extractor …`
+### Web UI
+
+The library ships with a built-in browser UI and a FastAPI backend to run matches and extractions without writing scripts.
+
+```bash
+esco-skill-extractor web --host 127.0.0.1 --port 8000
+```
+Open `http://localhost:8000` in your browser. The web UI lets you test prompts, select occupation candidates, run skill extraction using those occupations, and browse history from past tasks. By default, it stores job history in the `web_settings` directory. 
+
+Also, `--reload` can be passed to run the server in development mode (using Uvicorn auto-reload), and `--settings-dir` to change the storage path.
+
+Equivalent: `python -m esco_skill_extractor web …`
 
 ---
 
