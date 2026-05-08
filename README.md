@@ -42,6 +42,70 @@ pip install -e ".[dev,web]"
 
 ---
 
+## Docker
+
+A multi-arch image (amd64 + arm64) is published to GitHub Container Registry on every push to `main` and on every `v*` tag:
+
+```bash
+docker pull ghcr.io/datalab-auth/esco-skill-extractor:latest
+```
+
+### Run the web UI (default)
+
+```bash
+docker run --rm -p 8000:8000 \
+  -v esco-embeddings:/app/embeddings_cache \
+  -v esco-hf:/app/hf_cache \
+  -v esco-settings:/app/web_settings \
+  ghcr.io/datalab-auth/esco-skill-extractor:latest
+```
+
+Open <http://localhost:8000>. The first run downloads the embedding model into `/app/hf_cache`; the named volumes persist that download and the per-job cache across restarts.
+
+### Run the CLI
+
+The image's entrypoint is `esco-skill-extractor`, so any CLI subcommand works as a one-shot:
+
+```bash
+docker run --rm ghcr.io/datalab-auth/esco-skill-extractor:latest \
+  occupation --title "Room attendant" \
+  --llm-provider openai --openai-api-key "$OPENAI_API_KEY" \
+  --llm-model gpt-4o-mini
+```
+
+### Talking to Ollama on the host
+
+Linux: `--add-host=host.docker.internal:host-gateway` and pass `--ollama-host http://host.docker.internal:11434`. Docker Desktop (macOS/Windows): `host.docker.internal` resolves automatically.
+
+```bash
+docker run --rm -p 8000:8000 \
+  --add-host=host.docker.internal:host-gateway \
+  -e OLLAMA_HOST=http://host.docker.internal:11434 \
+  -v esco-embeddings:/app/embeddings_cache \
+  -v esco-hf:/app/hf_cache \
+  ghcr.io/datalab-auth/esco-skill-extractor:latest
+```
+
+### Using your own ESCO CSVs
+
+Mount a directory with your CSVs and point the CLI/web UI at them via the `--*-csv` flags or the settings panel:
+
+```bash
+docker run --rm -p 8000:8000 \
+  -v "$PWD/my-esco:/data:ro" \
+  ghcr.io/datalab-auth/esco-skill-extractor:latest
+# in the UI, set the CSV paths to /data/esco_occupations.csv etc.
+```
+
+### Build locally
+
+```bash
+docker build -t esco-skill-extractor:dev .
+docker run --rm -p 8000:8000 esco-skill-extractor:dev
+```
+
+---
+
 ## What ships in the package
 
 Under `esco_skill_extractor/data/` the wheel includes three CSV extracts used by default:
