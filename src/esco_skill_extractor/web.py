@@ -7,6 +7,7 @@ results from a server-side history.
 
 from __future__ import annotations
 
+import io
 import json
 import logging
 import threading
@@ -18,7 +19,7 @@ from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
 
-from fastapi import Body, FastAPI, HTTPException
+from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -31,6 +32,99 @@ _STATIC_DIR = Path(__file__).resolve().parent / "static"
 # ContextVar set inside each worker thread so the per-job log handler knows
 # which job's buffer to write into.
 _current_job_id: ContextVar[str | None] = ContextVar("current_job_id", default=None)
+
+
+# --------------------------------------------------------------------------- #
+# CSV schemas (kept in sync with what the matcher/extractor actually read)
+# --------------------------------------------------------------------------- #
+
+# Each entry: kind -> {required: [..], optional: [..], description: ".."}
+# "required_any" lists *groups*; each group is a list of column names where at
+# least one must be present (used by the mapping CSV which accepts variants).
+CSV_SCHEMAS: dict[str, dict] = {
+    "occupations": {
+        "label": "Occupations CSV",
+        "required": ["preferredLabel", "occupation_uri"],
+        "optional": ["altLabels", "description", "iscoGroup"],
+        "description": (
+            "ESCO occupations table. preferredLabel is used for matching, "
+            "occupation_uri is needed to look up predefined skills."
+        ),
+    },
+    "skills": {
+        "label": "Skills CSV",
+        "required": ["preferredLabel", "skill_uri"],
+        "optional": ["altLabels", "description"],
+        "description": "ESCO skills table — one row per skill.",
+    },
+    "mapping": {
+        "label": "Occupation–skills mapping CSV",
+        "required_any": [
+            # Occupation column: either occupation_uri or any of these aliases.
+            ["occupation_uri", "concepturi", "occupation_id", "esco_occupation"],
+            # Skill column: either skill_uri or one of these aliases.
+            ["skill_uri", "skill_id", "esco_skill"],
+        ],
+        "optional": ["relation_type", "relationtype", "skill_type", "essentiality"],
+        "description": (
+            "Links occupations to skills. Needs an occupation-uri column and a "
+            "skill-uri column; an optional relation_type column splits essential "
+            "vs. optional skills."
+        ),
+    },
+}
+
+
+def _check_csv_columns(columns: list[str], kind: str) -> None:
+    """Raise HTTPException(400) if ``columns`` don't satisfy the schema for ``kind``."""
+    schema = CSV_SCHEMAS.get(kind)
+    if schema is None:
+        raise HTTPException(status_code=400, detail=f"Unknown CSV kind: {kind}")
+
+    cols_lower = {c.lower(): c for c in columns}
+    missing = [c for c in schema.get("required", []) if c.lower() not in cols_lower]
+    missing_groups = [
+        g for g in schema.get("required_any", [])
+        if not any(c.lower() in cols_lower for c in g)
+    ]
+
+    if missing or missing_groups:
+        parts = []
+        if missing:
+            parts.append("missing required column(s): " + ", ".join(missing))
+        for group in missing_groups:
+            parts.append("must include one of: " + ", ".join(group))
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"{schema['label']} is missing required columns — {'; '.join(parts)}. "
+                f"Found columns: {columns}."
+            ),
+        )
+
+
+def _validate_csv_bytes(content: bytes, kind: str) -> list[str]:
+    """Validate raw CSV bytes against the schema for ``kind``. Returns the columns."""
+    import pandas as pd
+
+    if kind not in CSV_SCHEMAS:
+        raise HTTPException(status_code=400, detail=f"Unknown CSV kind: {kind}")
+
+    try:
+        # nrows=0 reads only the header — fast even for big files.
+        df = pd.read_csv(io.BytesIO(content), nrows=0)
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Could not parse CSV: {e}. "
+                "Make sure the file is comma-separated with a header row."
+            ),
+        ) from e
+
+    columns = list(df.columns)
+    _check_csv_columns(columns, kind)
+    return columns
 
 
 # --------------------------------------------------------------------------- #
@@ -54,6 +148,7 @@ class OccupationRequest(_BaseConfig):
     title: str
     description: str | None = None
     qualifications: str | None = None
+    occupations_csv_path: str | None = None
     use_llm_validation: bool = False
     clean_with_llm: bool = True
     top_k: int = 5
@@ -65,6 +160,9 @@ class SkillsRequest(_BaseConfig):
     occupation: str
     description: str | None = None
     qualifications: str | None = None
+    skills_csv_path: str | None = None
+    occupations_csv_path: str | None = None
+    occupation_skills_mapping_csv_path: str | None = None
     similarity_threshold: float = 0.6
 
 
@@ -94,12 +192,13 @@ class _InstanceCache:
     def get_occupation_matcher(self, req: OccupationRequest):
         from .occupation import ESCOOccupationMatcher
 
-        key = _config_key(req, "occupation")
+        key = _config_key(req, "occupation") + (req.occupations_csv_path or "",)
         with self._lock:
             inst = self._cache.get(key)
             if inst is None:
                 logger.info("Building new ESCOOccupationMatcher")
                 inst = ESCOOccupationMatcher(
+                    occupations_csv_path=req.occupations_csv_path or None,
                     embedding_model=req.embedding_model,
                     llm_provider=req.llm_provider,
                     llm_model_name=req.llm_model,
@@ -117,12 +216,21 @@ class _InstanceCache:
     def get_skill_extractor(self, req: SkillsRequest):
         from .skill_extraction import ESCOSkillExtractor
 
-        key = _config_key(req, "skills") + (req.similarity_threshold,)
+        key = _config_key(req, "skills") + (
+            req.similarity_threshold,
+            req.skills_csv_path or "",
+            req.occupations_csv_path or "",
+            req.occupation_skills_mapping_csv_path or "",
+        )
         with self._lock:
             inst = self._cache.get(key)
             if inst is None:
                 logger.info("Building new ESCOSkillExtractor")
+                mapping_csv = req.occupation_skills_mapping_csv_path or None
                 inst = ESCOSkillExtractor(
+                    skills_csv_path=req.skills_csv_path or None,
+                    occupations_csv_path=req.occupations_csv_path or None,
+                    occupation_skills_mapping_csv_path=mapping_csv,
                     embedding_model=req.embedding_model,
                     llm_provider=req.llm_provider,
                     llm_model_name=req.llm_model,
@@ -232,9 +340,11 @@ class _Persistence:
     def __init__(self, base_dir: Path) -> None:
         self.base = Path(base_dir)
         self.jobs_dir = self.base / "jobs"
+        self.uploads_dir = self.base / "uploads"
         self.settings_path = self.base / "settings.json"
         self.base.mkdir(parents=True, exist_ok=True)
         self.jobs_dir.mkdir(parents=True, exist_ok=True)
+        self.uploads_dir.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
 
     def save_job(self, job: Job) -> None:
@@ -503,6 +613,7 @@ def create_app(settings_dir: str | Path | None = None) -> FastAPI:
             "title": req.title,
             "description": req.description,
             "qualifications": req.qualifications,
+            "occupations_csv_path": req.occupations_csv_path,
         }
         job = Job("occupation", req.title, inputs=inputs)
         store.add(job)
@@ -516,6 +627,9 @@ def create_app(settings_dir: str | Path | None = None) -> FastAPI:
             "description": req.description,
             "qualifications": req.qualifications,
             "occupation": req.occupation,
+            "skills_csv_path": req.skills_csv_path,
+            "occupations_csv_path": req.occupations_csv_path,
+            "occupation_skills_mapping_csv_path": req.occupation_skills_mapping_csv_path,
         }
         job = Job("skills", req.title, inputs=inputs)
         store.add(job)
@@ -532,6 +646,68 @@ def create_app(settings_dir: str | Path | None = None) -> FastAPI:
         if not j:
             raise HTTPException(status_code=404, detail="Job not found")
         return j.snapshot(include_logs=True, log_since=since)
+
+    @app.get("/api/uploads/schemas")
+    def get_csv_schemas() -> dict:
+        return CSV_SCHEMAS
+
+    @app.post("/api/uploads/validate")
+    def validate_csv_path(payload: dict = Body(...)) -> dict:
+        import pandas as pd
+
+        kind = (payload or {}).get("kind")
+        path_str = ((payload or {}).get("path") or "").strip()
+        if kind not in CSV_SCHEMAS:
+            return {"valid": False, "detail": f"Unknown CSV kind: {kind}"}
+        if not path_str:
+            return {"valid": False, "detail": "Path is empty"}
+        p = Path(path_str)
+        if not p.is_file():
+            return {"valid": False, "detail": f"File not found: {path_str}"}
+        try:
+            df = pd.read_csv(p, nrows=0)
+        except Exception as e:
+            return {"valid": False, "detail": f"Could not parse CSV: {e}"}
+        columns = list(df.columns)
+        try:
+            _check_csv_columns(columns, kind)
+        except HTTPException as e:
+            return {"valid": False, "detail": e.detail, "columns": columns}
+        return {"valid": True, "columns": columns, "name": p.name, "path": str(p.resolve())}
+
+    @app.post("/api/uploads")
+    async def upload_csv(
+        file: UploadFile = File(...),
+        kind: str = Form(...),
+    ) -> dict:
+        if kind not in CSV_SCHEMAS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid kind {kind!r}; expected one of {list(CSV_SCHEMAS)}",
+            )
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="Missing filename")
+        # Strip any path components — only keep the bare filename.
+        safe_name = Path(file.filename).name
+        if not safe_name.lower().endswith(".csv"):
+            raise HTTPException(status_code=400, detail="Only .csv files are accepted")
+
+        content = await file.read()
+        # Validate header BEFORE writing the file to disk.
+        columns = _validate_csv_bytes(content, kind)
+
+        target = persistence.uploads_dir / safe_name
+        try:
+            target.write_bytes(content)
+        except OSError as e:
+            raise HTTPException(status_code=500, detail=f"Failed to save upload: {e}") from e
+        return {
+            "path": str(target.resolve()),
+            "name": safe_name,
+            "size": len(content),
+            "kind": kind,
+            "columns": columns,
+        }
 
     @app.get("/api/settings")
     def get_settings() -> dict:

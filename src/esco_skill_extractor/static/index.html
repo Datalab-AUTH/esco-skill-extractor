@@ -316,6 +316,43 @@
   }
   .use-skill-btn:hover { background: var(--accent-soft); }
 
+  .csv-row { display: flex; gap: 6px; align-items: stretch; }
+  .csv-row input[type=text] { flex: 1; }
+  .csv-row .ghost-btn { white-space: nowrap; }
+  .csv-row .ghost-btn.clear { color: var(--bad); border-color: var(--border-strong); }
+  .csv-hint {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    margin-bottom: 8px;
+    word-break: break-all;
+    min-height: 14px;
+  }
+  .csv-hint.error { color: var(--bad); }
+  .csv-hint.success { color: var(--good); }
+
+  .csv-format {
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 8px;
+    margin-top: 4px;
+    margin-bottom: 4px;
+  }
+  .csv-format .fmt-label { font-weight: 600; color: var(--text); }
+  .csv-format code {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0 4px;
+    margin: 0 2px;
+  }
+  .csv-format .fmt-row { margin-top: 2px; }
+  .csv-format .fmt-desc { color: var(--muted); margin-top: 4px; font-style: italic; }
+
   @media (max-width: 1200px) {
     main { grid-template-columns: 280px 1fr; }
     .history-panel { grid-column: 1 / -1; }
@@ -406,6 +443,17 @@
       <label><span>Qualifications</span>
         <textarea id="occ_qualifications" placeholder="Optional"></textarea>
       </label>
+      <label><span>Occupations CSV (override)</span>
+        <div class="csv-row">
+          <input id="occ_occupations_csv_path" type="text" placeholder="default: bundled esco_occupations.csv" />
+          <button class="ghost-btn" type="button"
+            data-upload-target="occ_occupations_csv_path"
+            data-upload-kind="occupations">Upload…</button>
+          <button class="ghost-btn clear" type="button" data-clear-target="occ_occupations_csv_path">Clear</button>
+        </div>
+      </label>
+      <div class="csv-format" id="occ_occupations_csv_path_format" data-csv-kind="occupations"></div>
+      <div class="csv-hint" id="occ_occupations_csv_path_hint"></div>
       <div class="row">
         <label><span>top_k</span>
           <input id="occ_top_k" type="number" min="1" value="5" />
@@ -448,6 +496,39 @@
       <label><span>Qualifications</span>
         <textarea id="sk_qualifications" placeholder="Optional"></textarea>
       </label>
+      <label><span>Skills CSV (override)</span>
+        <div class="csv-row">
+          <input id="sk_skills_csv_path" type="text" placeholder="default: bundled esco_skills.csv" />
+          <button class="ghost-btn" type="button"
+            data-upload-target="sk_skills_csv_path"
+            data-upload-kind="skills">Upload…</button>
+          <button class="ghost-btn clear" type="button" data-clear-target="sk_skills_csv_path">Clear</button>
+        </div>
+      </label>
+      <div class="csv-format" id="sk_skills_csv_path_format" data-csv-kind="skills"></div>
+      <div class="csv-hint" id="sk_skills_csv_path_hint"></div>
+      <label><span>Occupations CSV (override)</span>
+        <div class="csv-row">
+          <input id="sk_occupations_csv_path" type="text" placeholder="default: bundled esco_occupations.csv" />
+          <button class="ghost-btn" type="button"
+            data-upload-target="sk_occupations_csv_path"
+            data-upload-kind="occupations">Upload…</button>
+          <button class="ghost-btn clear" type="button" data-clear-target="sk_occupations_csv_path">Clear</button>
+        </div>
+      </label>
+      <div class="csv-format" id="sk_occupations_csv_path_format" data-csv-kind="occupations"></div>
+      <div class="csv-hint" id="sk_occupations_csv_path_hint"></div>
+      <label><span>Occupation–skills mapping CSV (override)</span>
+        <div class="csv-row">
+          <input id="sk_mapping_csv_path" type="text" placeholder="default: bundled occupation_skills_mapping.csv" />
+          <button class="ghost-btn" type="button"
+            data-upload-target="sk_mapping_csv_path"
+            data-upload-kind="mapping">Upload…</button>
+          <button class="ghost-btn clear" type="button" data-clear-target="sk_mapping_csv_path">Clear</button>
+        </div>
+      </label>
+      <div class="csv-format" id="sk_mapping_csv_path_format" data-csv-kind="mapping"></div>
+      <div class="csv-hint" id="sk_mapping_csv_path_hint"></div>
       <label><span>similarity_threshold</span>
         <input id="sk_threshold" type="number" min="0" max="1" step="0.05" value="0.6" />
       </label>
@@ -457,6 +538,8 @@
       <div class="result" id="sk_result"></div>
     </div>
   </section>
+
+  <input type="file" id="csv_file_picker" accept=".csv,text/csv" hidden />
 
   <aside class="panel history-panel">
     <div class="hist-header">
@@ -514,21 +597,209 @@ document.querySelectorAll(".tab").forEach((btn) => {
 });
 
 // -------- request payload ----------
+const trimOrNull = (id) => $(id).value.trim() || null;
+
 function configPayload() {
-  const v = (id) => $(id).value.trim() || null;
   return {
     embedding_model: $("embedding_model").value,
     llm_provider: $("llm_provider").value,
     llm_model: $("llm_model").value,
-    ollama_host: v("ollama_host"),
-    openai_api_key: v("openai_api_key"),
-    openai_base_url: v("openai_base_url"),
-    google_api_key: v("google_api_key"),
-    embeddings_cache_dir: v("embeddings_cache_dir"),
+    ollama_host: trimOrNull("ollama_host"),
+    openai_api_key: trimOrNull("openai_api_key"),
+    openai_base_url: trimOrNull("openai_base_url"),
+    google_api_key: trimOrNull("google_api_key"),
+    embeddings_cache_dir: trimOrNull("embeddings_cache_dir"),
     force_recompute_embeddings: $("force_recompute_embeddings").checked,
     verbose: $("verbose").checked,
   };
 }
+
+// -------- CSV upload + path-field plumbing ----------
+let pendingUpload = null; // { targetId, kind }
+let csvSchemas = {};
+
+// Per-CSV-input validity. "unset" means empty path → use bundled default
+// (treated as ok). "pending" blocks the run button while we re-check.
+const CSV_INPUTS = [
+  { id: "occ_occupations_csv_path", kind: "occupations", tab: "occ" },
+  { id: "sk_skills_csv_path",       kind: "skills",      tab: "sk"  },
+  { id: "sk_occupations_csv_path",  kind: "occupations", tab: "sk"  },
+  { id: "sk_mapping_csv_path",      kind: "mapping",     tab: "sk"  },
+];
+const csvValidity = {}; // id -> "unset" | "pending" | "valid" | "invalid"
+const csvValidateTimers = {}; // id -> debounce handle
+CSV_INPUTS.forEach((c) => { csvValidity[c.id] = "unset"; });
+
+function csvBlockedReason(tab) {
+  for (const c of CSV_INPUTS) {
+    if (c.tab !== tab) continue;
+    const val = $(c.id).value.trim();
+    if (!val) continue;            // empty → use bundled default
+    if (csvValidity[c.id] !== "valid") return c.id;
+  }
+  return null;
+}
+
+function updateRunButtons() {
+  for (const tab of ["occ", "sk"]) {
+    const btn = $(tab + "_run");
+    // Don't fight with the running-job state: if a job is in flight, leave it.
+    if (pollers[tab] && pollers[tab].handle) continue;
+    btn.disabled = csvBlockedReason(tab) != null;
+  }
+}
+
+function setCsvHint(targetId, msg, kind) {
+  const hint = $(targetId + "_hint");
+  if (!hint) return;
+  hint.className = "csv-hint" + (kind ? " " + kind : "");
+  hint.textContent = msg || "";
+}
+
+function renderCsvFormatHints() {
+  document.querySelectorAll(".csv-format[data-csv-kind]").forEach((el) => {
+    const schema = csvSchemas[el.dataset.csvKind];
+    if (!schema) {
+      el.textContent = "";
+      return;
+    }
+    const wrap = (cols) =>
+      cols.map((c) => `<code>${escapeHtml(c)}</code>`).join(" ");
+    let html = `<div class="fmt-label">${escapeHtml(schema.label)}</div>`;
+    if (schema.required && schema.required.length) {
+      html += `<div class="fmt-row">Required columns: ${wrap(schema.required)}</div>`;
+    }
+    if (schema.required_any && schema.required_any.length) {
+      schema.required_any.forEach((group) => {
+        html += `<div class="fmt-row">Must include one of: ${wrap(group)}</div>`;
+      });
+    }
+    if (schema.optional && schema.optional.length) {
+      html += `<div class="fmt-row">Optional: ${wrap(schema.optional)}</div>`;
+    }
+    if (schema.description) {
+      html += `<div class="fmt-desc">${escapeHtml(schema.description)}</div>`;
+    }
+    el.innerHTML = html;
+  });
+}
+
+async function loadCsvSchemas() {
+  try {
+    const r = await fetch("/api/uploads/schemas");
+    if (!r.ok) return;
+    csvSchemas = await r.json();
+  } catch (err) {
+    console.error("loadCsvSchemas failed:", err);
+  }
+  renderCsvFormatHints();
+}
+
+async function uploadCsv(targetId, kind, fileEl) {
+  const file = fileEl.files && fileEl.files[0];
+  if (!file) return;
+  csvValidity[targetId] = "pending";
+  updateRunButtons();
+  setCsvHint(targetId, `Uploading ${file.name}…`, "");
+  try {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("kind", kind);
+    const r = await fetch("/api/uploads", { method: "POST", body: fd });
+    const text = await r.text();
+    let data;
+    try { data = JSON.parse(text); } catch { data = { detail: text }; }
+    if (!r.ok) throw new Error(data.detail || `HTTP ${r.status}`);
+    $(targetId).value = data.path;
+    csvValidity[targetId] = "valid";
+    setCsvHint(
+      targetId,
+      `Uploaded ${data.name} (${(data.size / 1024).toFixed(1)} KB) — columns: ${(data.columns || []).join(", ")}`,
+      "success"
+    );
+    scheduleSettingsSave();
+  } catch (err) {
+    csvValidity[targetId] = "invalid";
+    setCsvHint(targetId, "Upload rejected: " + err.message, "error");
+  } finally {
+    updateRunButtons();
+  }
+}
+
+async function validatePath(id, kind) {
+  const path = $(id).value.trim();
+  if (!path) {
+    csvValidity[id] = "unset";
+    setCsvHint(id, "");
+    updateRunButtons();
+    return;
+  }
+  csvValidity[id] = "pending";
+  setCsvHint(id, "Checking CSV…", "");
+  updateRunButtons();
+  try {
+    const r = await fetch("/api/uploads/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, kind }),
+    });
+    const data = await r.json();
+    if (data.valid) {
+      csvValidity[id] = "valid";
+      setCsvHint(
+        id,
+        `OK — ${data.name} · columns: ${(data.columns || []).join(", ")}`,
+        "success"
+      );
+    } else {
+      csvValidity[id] = "invalid";
+      setCsvHint(id, "Invalid CSV: " + (data.detail || "unknown"), "error");
+    }
+  } catch (err) {
+    csvValidity[id] = "invalid";
+    setCsvHint(id, "Validation failed: " + err.message, "error");
+  } finally {
+    updateRunButtons();
+  }
+}
+
+function scheduleValidatePath(id, kind) {
+  csvValidity[id] = "pending";
+  updateRunButtons();
+  clearTimeout(csvValidateTimers[id]);
+  csvValidateTimers[id] = setTimeout(() => validatePath(id, kind), 400);
+}
+
+document.addEventListener("click", (ev) => {
+  const upBtn = ev.target.closest("[data-upload-target]");
+  if (upBtn) {
+    pendingUpload = {
+      targetId: upBtn.dataset.uploadTarget,
+      kind: upBtn.dataset.uploadKind,
+    };
+    const picker = $("csv_file_picker");
+    picker.value = "";
+    picker.click();
+    return;
+  }
+  const clrBtn = ev.target.closest("[data-clear-target]");
+  if (clrBtn) {
+    const id = clrBtn.dataset.clearTarget;
+    $(id).value = "";
+    csvValidity[id] = "unset";
+    setCsvHint(id, "");
+    updateRunButtons();
+    scheduleSettingsSave();
+  }
+});
+
+$("csv_file_picker").addEventListener("change", (ev) => {
+  const pending = pendingUpload;
+  pendingUpload = null;
+  if (pending && pending.targetId && pending.kind) {
+    uploadCsv(pending.targetId, pending.kind, ev.target);
+  }
+});
 
 async function postJSON(url, body) {
   const r = await fetch(url, {
@@ -647,9 +918,10 @@ function useOccupationForSkills(occJob, occupationName) {
 function renderJobState(kind, data, opts = {}) {
   const statusEl = $(kind + "_status");
   const btn = $(kind + "_run");
+  const csvBlocked = csvBlockedReason(kind) != null;
   if (!data) {
     setStatus(statusEl, "");
-    btn.disabled = false;
+    btn.disabled = csvBlocked;
     return;
   }
   if (data.status === "queued" || data.status === "running") {
@@ -657,11 +929,11 @@ function renderJobState(kind, data, opts = {}) {
     btn.disabled = true;
   } else if (data.status === "done") {
     setStatus(statusEl, opts.silent ? "" : "Complete.", "success");
-    btn.disabled = false;
+    btn.disabled = csvBlocked;
     renderResult(kind, data);
   } else if (data.status === "error") {
     setStatus(statusEl, "Error: " + (data.error || "unknown"), "error");
-    btn.disabled = false;
+    btn.disabled = csvBlocked;
   }
 }
 
@@ -724,7 +996,7 @@ async function submit(kind, url, body) {
     startPolling(kind, data.job_id);
     refreshHistory();
   } catch (err) {
-    $(kind + "_run").disabled = false;
+    $(kind + "_run").disabled = csvBlockedReason(kind) != null;
     setStatus($(kind + "_status"), "Error: " + err.message, "error");
   }
 }
@@ -735,11 +1007,17 @@ $("occ_run").addEventListener("click", () => {
     setStatus($("occ_status"), "Job title is required.", "error");
     return;
   }
+  const blocked = csvBlockedReason("occ");
+  if (blocked) {
+    setStatus($("occ_status"), "Fix the CSV input above first.", "error");
+    return;
+  }
   submit("occ", "/api/occupation/match", {
     ...configPayload(),
     title,
     description: $("occ_description").value.trim() || null,
     qualifications: $("occ_qualifications").value.trim() || null,
+    occupations_csv_path: trimOrNull("occ_occupations_csv_path"),
     use_llm_validation: $("occ_use_llm_validation").checked,
     clean_with_llm: $("occ_clean_with_llm").checked,
     top_k: parseInt($("occ_top_k").value, 10) || 5,
@@ -754,12 +1032,20 @@ $("sk_run").addEventListener("click", () => {
     setStatus($("sk_status"), "Job title and occupation name are required.", "error");
     return;
   }
+  const blocked = csvBlockedReason("sk");
+  if (blocked) {
+    setStatus($("sk_status"), "Fix the CSV input(s) above first.", "error");
+    return;
+  }
   submit("sk", "/api/skills/extract", {
     ...configPayload(),
     title,
     occupation,
     description: $("sk_description").value.trim() || null,
     qualifications: $("sk_qualifications").value.trim() || null,
+    skills_csv_path: trimOrNull("sk_skills_csv_path"),
+    occupations_csv_path: trimOrNull("sk_occupations_csv_path"),
+    occupation_skills_mapping_csv_path: trimOrNull("sk_mapping_csv_path"),
     similarity_threshold: parseFloat($("sk_threshold").value) || 0.6,
   });
 });
@@ -844,11 +1130,21 @@ async function loadHistoryItem(jobId, jobKind) {
     $("occ_title").value = inputs.title || data.title || "";
     $("occ_description").value = inputs.description || "";
     $("occ_qualifications").value = inputs.qualifications || "";
+    $("occ_occupations_csv_path").value = inputs.occupations_csv_path || "";
+    setCsvHint("occ_occupations_csv_path", "");
+    revalidateAllCsvInputs();
   } else if (kind === "sk") {
     $("sk_title").value = inputs.title || data.title || "";
     $("sk_occupation").value = inputs.occupation || "";
     $("sk_description").value = inputs.description || "";
     $("sk_qualifications").value = inputs.qualifications || "";
+    $("sk_skills_csv_path").value = inputs.skills_csv_path || "";
+    $("sk_occupations_csv_path").value = inputs.occupations_csv_path || "";
+    $("sk_mapping_csv_path").value = inputs.occupation_skills_mapping_csv_path || "";
+    setCsvHint("sk_skills_csv_path", "");
+    setCsvHint("sk_occupations_csv_path", "");
+    setCsvHint("sk_mapping_csv_path", "");
+    revalidateAllCsvInputs();
   }
 
   // Switch to the matching tab
@@ -880,6 +1176,10 @@ const SETTINGS_FIELDS = [
   ["embeddings_cache_dir", "value"],
   ["force_recompute_embeddings", "checked"],
   ["verbose", "checked"],
+  ["occ_occupations_csv_path", "value"],
+  ["sk_skills_csv_path", "value"],
+  ["sk_occupations_csv_path", "value"],
+  ["sk_mapping_csv_path", "value"],
 ];
 
 let settingsSaveTimer = null;
@@ -952,9 +1252,21 @@ function bindSettingsAutosave() {
 }
 
 // -------- on page load: load settings, resume any active jobs ----------
+function bindCsvPathInputs() {
+  for (const c of CSV_INPUTS) {
+    $(c.id).addEventListener("input", () => scheduleValidatePath(c.id, c.kind));
+  }
+}
+
+function revalidateAllCsvInputs() {
+  for (const c of CSV_INPUTS) validatePath(c.id, c.kind);
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
-  await loadSettings();
+  await Promise.all([loadSettings(), loadCsvSchemas()]);
   bindSettingsAutosave();
+  bindCsvPathInputs();
+  revalidateAllCsvInputs();
   await refreshHistory();
   for (const kind of ["occ", "sk"]) {
     const jid = getActiveJob(kind);
